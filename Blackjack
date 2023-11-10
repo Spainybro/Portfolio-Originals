@@ -1,0 +1,697 @@
+#include <iostream>
+#include <string>
+#include <windows.h>
+
+using namespace std;
+//Base Pack
+enum Suit { Hearts, Diamonds, Clubs, Spades };
+const int PACK_SIZE = 52;
+struct Card
+{
+    Suit suit; // H, D, C or S
+    int value; // 1-13 (Ace to king)
+    int score; // 1-11
+};
+Card Pack[PACK_SIZE];
+//Base Hands
+Card pHand[5];
+Card cHand[5];
+//Variables
+int topOfDeck = 0;
+int pScore = 0;
+int cScore = 0;
+int pHandPos = 0;
+int cHandPos = 0;
+int pHandPosX = 1;
+int pHandPosY = 8;
+int cHandPosX = 1;
+int cHandPosY = 1;
+bool pFiveCardTrick = false;
+bool cFiveCardTrick = false;
+//Char const
+const int TLC = 218; // Top Left Corner
+const int TRC = 191; // Top Right Corner
+const int HL = 196;  // Horizontal Line
+const int VL = 179;  // Vertical Line
+const int BLC = 192;  // Bottom Left Corner
+const int BRC = 217;  // Bottom Right Corner
+const int BoC = 177; //Back of Card
+//Visuals
+void drawCard(int xpos, int ypos, int width, int height, Card currentCard);
+void drawBoC(int xpos, int ypos, int width, int height);
+void drawHand(int x, int y, Card hand[5]);
+//Menu
+void displayMenu();
+void processMenuChoices();
+//Play
+void setupPack();
+void shufflePack();
+void readyPack();
+void packReset();
+void play();
+void dealPHand();
+void dealCHand(bool fCard, bool firstDeal);
+void BlackJackCheck();
+void stickOrTwist();
+void dealersGambit();
+void endOfGame();
+void clearHand(Card hand[5]);
+bool keepPlaying(bool Playing);
+void aceDown(Card hand[5],int score);
+void pScoreSet(Card Hand[5]);
+void cScoreSet(Card Hand[5]);
+//About
+void about();
+//Help
+void help();
+//Utility
+void cls();
+void gotoxy(int x, int y);
+void setTextColour(int colour);
+
+int main()
+{
+    setTextColour(15);
+    readyPack();
+    processMenuChoices();
+
+    return 0;
+} //int main
+
+void setupPack()
+{
+    for (int loop = 0; loop <= 12; loop++)
+    {
+        Pack[loop].suit = Hearts;
+        Pack[loop + 13].suit = Diamonds;
+        Pack[loop + 13 + 13].suit = Clubs;
+        Pack[loop + 13 + 13 + 13].suit = Spades;
+        Pack[loop].value = loop + 1;
+        Pack[loop].score = loop + 1;        
+        Pack[loop + 13].value = loop + 1;
+        Pack[loop + 13].score = loop + 1;        
+        Pack[loop + 13 + 13].value = loop + 1;
+        Pack[loop + 13 + 13].score = loop + 1;        
+        Pack[loop + 13 + 13 + 13].value = loop + 1;
+        Pack[loop + 13 + 13 + 13].score = loop + 1;
+    }
+    Pack[0].score = 11; //Ace
+    Pack[10].score = 10; //Jack
+    Pack[11].score = 10; //Queen
+    Pack[12].score = 10; //King
+    Pack[13].score = 11; //Ace
+    Pack[23].score = 10; //Jack
+    Pack[24].score = 10; //Queen
+    Pack[25].score = 10; //King
+    Pack[26].score = 11; //Ace
+    Pack[36].score = 10; //Jack
+    Pack[37].score = 10; //Queen
+    Pack[38].score = 10; //King
+    Pack[39].score = 11; //Ace
+    Pack[49].score = 10; //Jack
+    Pack[50].score = 10; //Queen
+    Pack[51].score = 10; //King
+} //Pack Setup
+
+void shufflePack()
+{
+    int rand1, rand2;
+    Card tempCard;
+
+    //Set rndNum
+    srand(time(0));
+
+    for (int loop = 0; loop < 52; loop++)
+    {
+        rand1 = rand() % (PACK_SIZE);
+        rand2 = rand() % (PACK_SIZE);
+
+        tempCard = Pack[rand1];
+        Pack[rand1] = Pack[rand2];
+        Pack[rand2] = tempCard;
+    }
+
+} //Shuffle Pack
+
+void dealPHand()
+{      
+    pHand[pHandPos] = Pack[topOfDeck];
+    pHandPos++;   
+    topOfDeck++;
+    packReset();
+    drawHand(pHandPosX,pHandPosY,pHand);
+}//deal 1 card to player
+
+void dealCHand(bool fCard,bool firstDeal)
+{
+    if (firstDeal==true)
+    {
+        if (fCard == false)
+        {
+            drawCard(cHandPosX + 9, cHandPosY, 7, 6, Pack[topOfDeck]);
+        }
+        else
+        {
+            drawBoC(cHandPosX, cHandPosY, 7, 6);
+        }
+    }
+    cScore = cScore + Pack[topOfDeck].score;
+    cHand[cHandPos] = Pack[topOfDeck];
+    topOfDeck++;
+    cHandPos++;
+    packReset();
+}//deal 1 card to dealer
+
+void drawHand(int x, int y,Card hand[5])
+{
+    for (int loop=0; loop < 5; loop++)
+    {
+        if (hand[loop].value != 0)
+        {
+            drawCard(x, y, 7, 6, hand[loop]);
+            x = x + 9;
+        }
+    }
+}
+
+void clearHand(Card hand[5])
+{
+    for (int loop = 0; loop < 5; loop++)
+    {
+        hand[loop].value = 0;
+        hand[loop].score = 0;
+    }
+}
+
+void displayMenu()
+{    
+    cout << "__Blackjack Menu__" << endl;
+    cout << "    (P)lay" << endl;
+    cout << "    (A)bout" << endl;
+    cout << "    (H)elp" << endl;
+    cout << "    (E)xit" << endl;
+    cout << "Enter Choice..." << endl;
+}//Menu
+
+void processMenuChoices()
+{
+    char choice;
+    displayMenu();
+    choice = toupper(_getwch());
+    while (choice != 'E')
+    {
+        if (choice == 'P')
+        {
+            play();
+        }
+        else if (choice == 'H')
+        {
+            help();
+        }
+        else if (choice == 'A')
+        {
+            about();
+        }
+        cls();
+        gotoxy(0, 0);
+        displayMenu();
+        choice = toupper(_getwch());
+    }
+
+
+}//Process Menu
+
+void play()
+{    
+    bool Playing = true;
+    while (Playing == true)
+    {
+        cls();
+        clearHand(pHand);
+        clearHand(cHand);
+        packReset();
+        pScore = 0;
+        cScore = 0;
+        pFiveCardTrick = false;
+        cFiveCardTrick = false;
+
+        pHandPos = 0;
+        cHandPos = 0;                   
+
+        dealPHand();
+        dealCHand(true,true);
+        dealPHand();
+        dealCHand(false,true);
+        cScoreSet(cHand);
+        pScoreSet(pHand);
+        gotoxy(0, 16);
+        
+        BlackJackCheck();
+        if (pScore != 21 and cScore != 21)
+        {
+            stickOrTwist();
+            if (pScore < 22)
+            {
+                drawHand(cHandPosX, cHandPosY, cHand);
+                dealersGambit();
+                if (cScore < 22)
+                {
+                    endOfGame();
+                }
+            }
+        }
+           
+        Playing = keepPlaying(Playing);
+        
+        
+    }//while playing = true
+
+}//play
+
+void BlackJackCheck()
+{
+    if (pScore == 21 and cScore == 21)
+    {
+        cout << "Double Blackjack!\n   Draw";
+        drawHand(cHandPosX, cHandPosY, cHand);
+        drawHand(pHandPosX, pHandPosY, pHand);
+
+    }
+    else if (pScore == 21)
+    {
+        cout << "Player Blackjack!\n   Player Wins";
+
+    }
+    else if (cScore == 21)
+    {
+        cls();
+        cout << "Dealer Blackjack!";
+        drawHand(cHandPosX, cHandPosY, cHand);
+        drawHand(pHandPosX, pHandPosY, pHand);
+        cout << "\n\n   Dealer Wins";
+    }    
+}
+
+bool keepPlaying(bool Playing)
+{
+    char PlayAgainChoice;
+    cout << "\n Play Again? (y/n)\n";
+    PlayAgainChoice = toupper(_getwch());
+    while (PlayAgainChoice != 'Y' and PlayAgainChoice != 'N')
+    {
+        PlayAgainChoice = toupper(_getwch());
+    }
+    if (PlayAgainChoice == 'N')
+    {
+        Playing = false;
+    }
+    else
+    {
+        Playing = true;
+    }
+    return Playing;
+}
+
+void stickOrTwist()
+{     
+    aceDown(pHand, pScore);
+    while (pScore < 21 and pHandPos<5)
+    {
+        
+        gotoxy(0, 16);
+        cout << "Player Score = " << pScore << endl;
+        cout << "(S)tick or (T)wist?\n";
+        char Choice = 0;
+        Choice = toupper(_getwch());     
+        while (Choice != 'S' and Choice != 'T')
+        {
+            Choice = toupper(_getwch());
+        }
+        if (Choice == 'T')
+        {
+            dealPHand();
+            pScoreSet(pHand);
+            aceDown(pHand,pScore);
+            pScoreSet(pHand);
+        }
+        else if (Choice =='S')
+        {
+            pHandPos = 5;
+        }
+        if (Choice != 'S' and pHandPos == 5 and pScore < 21)
+        {
+            cout << "Five Card Trick !";
+            pFiveCardTrick = true;
+        }
+    }
+
+    if (pScore > 21)
+    {
+        gotoxy(0, 16);
+        cout <<"                          "<<endl << "  Bust! Dealer Wins";
+    }
+}
+
+void dealersGambit()
+{    
+        while (cScore < 17 and cHandPos < 5)
+        {
+            cls();
+            gotoxy(0, 17);
+            cout << "  Dealer Score = " << cScore << endl;
+            dealCHand(false,false);
+            cScoreSet(cHand);
+            aceDown(cHand, cScore);
+            cScoreSet(cHand);
+            drawHand(cHandPosX, cHandPosY, cHand);
+            drawHand(pHandPosX, pHandPosY, pHand);
+        }
+        if (cHandPos == 5 and cScore < 21)
+        {
+            cout << "Five Card Trick !";
+            cFiveCardTrick = true;
+        }
+        cHandPos = 5;
+    
+    if (cScore > 21)
+    {
+        gotoxy(0, 18);
+        cout << "Dealer Bust! Player Wins";
+    }
+}
+
+void endOfGame()
+{
+    cls();
+    drawHand(cHandPosX, cHandPosY, cHand);
+    drawHand(pHandPosX, pHandPosY, pHand);
+    cout << endl << "\nPlayer Score : " << pScore << endl << "Dealer Score : " << cScore << endl << endl;
+    if (pFiveCardTrick==true and cFiveCardTrick==true)
+    {
+        if (pScore == cScore)
+        {
+            cout << "Draw - CPU Wins";
+        }
+        else if (pScore > cScore)
+        {
+            cout << "Player Wins";
+        }
+        else if (pScore < cScore)
+        {
+            cout << "Dealer Wins";
+        }
+    }
+    else if (pFiveCardTrick == true)
+    {
+        cout << "Player Wins with 5 card trick";
+    }
+    else if (cFiveCardTrick == true)
+    {
+        cout << "Dealer Wins with 5 card trick";
+    }
+    else if (pScore == cScore)
+    {
+        cout << "Draw - CPU Wins";
+    }
+    else if (pScore > cScore)
+    {
+        cout << "Player Wins";
+    }
+    else if (pScore < cScore)
+    {
+        cout << "Dealer Wins";
+    }
+}
+
+void aceDown(Card hand[5],int score)
+{
+    if (score > 21)
+    {
+        for (int loop = 0; loop < 5; loop++)
+        {
+            if (hand[loop].value == 1 and hand[loop].score != 1)
+            {
+                hand[loop].score = 1;
+                score = score - 10;
+            }
+        }
+    }
+}
+
+void pScoreSet(Card Hand[5])
+{
+    pScore = 0;
+    for (int loop = 0; loop < 5; loop++)
+    {
+        pScore = pScore + Hand[loop].score;
+   }
+}
+
+void cScoreSet(Card Hand[5])
+{
+    cScore = 0;
+    for (int loop = 0; loop < 5; loop++)
+    {
+        cScore = cScore + Hand[loop].score;
+    }
+}
+
+void help()
+{
+    cls();
+    cout << "\bHow to play\n-----------";
+
+    cout << "\nWith each round the player and the dealer are dealt two cards. \nThe player can then either stick (no more cards are dealt) or twist; which means deal another card, \nthis process is repeated until bust (lose go over 21) or stick.";
+    cout << "\nWhich hand is the best (winning hand):" << endl << "- The best hand of all is a Pontoon, which is 21 points in two cards;\n this can only consist of an ace plus a picture card or a ten card. ";
+    cout << "\n- Next best after a Pontoon is a Five Card Trick, which is a hand of five cards totalling 21 or less."<<"\n- A hand of three or four cards worth 21 points beats everything else except a Pontoon or Five Card Trick.";
+    cout << "\n- Hands with 20 or fewer points and fewer than five cards rank in order of their point value \n(the nearer to 21 the better)" << "\n- Hands with more than 21 points are bust and are worthless.";
+    cout << "\n\n Press any key to return to menu...";
+    _getwch();
+}//help
+
+void about()
+{
+    cls();
+
+    cout << "Created for COM439 - Problem solving with programming \nby Richard Wride - S22005298";
+
+    cout << "\n\n Press any key to return to menu...";
+    _getwch();
+}//about
+
+void readyPack()
+{
+    setupPack();
+    shufflePack();
+}//ready cards
+
+void packReset()
+{
+    if (topOfDeck == 52)
+    {
+        topOfDeck = 0;
+        readyPack();
+    }
+}//reset pack
+
+void gotoxy(int x, int y)
+{
+    _COORD pos;
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    pos.X = x;
+    pos.Y = y;
+    SetConsoleCursorPosition(hConsole, pos);
+}
+
+void setTextColour(int colour)
+{
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    SetConsoleTextAttribute(hConsole, colour);
+
+}	//	void setTextColour(int colour)
+
+void drawCard(int xpos, int ypos, int width, int height, Card currentCard)
+{  
+    
+    gotoxy(xpos, ypos);
+    // top left corner
+    cout << char(TLC);
+
+    // print out top horizontal line
+    for (int loop = 0; loop < width; loop++)
+    {
+        cout << char(HL);
+    }
+
+    // top right corner
+    cout << char(TRC);
+
+    // vertical lines
+    for (int loop = 1; loop < height; loop++)
+    {
+        gotoxy(xpos, ypos + loop);
+        cout << char(VL);
+
+        gotoxy(xpos + width + 1, ypos + loop);
+        cout << char(VL);
+    }
+
+    // bottom left corner
+    gotoxy(xpos, ypos + height);
+    cout << char(BLC);
+
+    // print out bottom horizontal line
+    for (int loop = 0; loop < width; loop++)
+    {
+        cout << char(HL);
+    }
+        
+    cout << char(BRC);// bottom right corner
+
+    // draw value and suit - top left corner
+    gotoxy(xpos + 2, ypos + 1);
+    if (currentCard.value == 1)
+    {
+        cout << "A";
+    }
+    else if (currentCard.value == 11)
+    {
+        cout << "J";
+    }
+    else if (currentCard.value == 12)
+    {
+        cout << "Q";
+    }
+    else if (currentCard.value == 13)
+    {
+        cout << "K";
+    }
+    else
+    {
+        cout << currentCard.value;
+    }
+    
+
+    // display suit
+    gotoxy(xpos + width/2 + 1 , ypos + height/2);
+    cout << char(currentCard.suit + 3);  // convert value into ascii suit symbol
+
+    // draw value and suit - bottom right corner
+    gotoxy(xpos + width - 1, ypos + height - 1);
+    if (currentCard.value == 1)
+    {
+        cout << "A";
+    }
+    else if (currentCard.value == 11)
+    {
+        cout << "J";
+    }
+    else if (currentCard.value == 12)
+    {
+        cout << "Q";
+    }
+    else if (currentCard.value == 13)
+    {
+        cout << "K";
+    }
+    else
+    {
+        cout << currentCard.value;
+    }
+   
+    gotoxy(0, 13);
+   }	//	void drawBox(int xpos, int ypos, int width, int height)
+
+void drawBoC(int xpos, int ypos, int width, int height)
+{
+    gotoxy(xpos, ypos);
+    // top left corner
+    cout << char(TLC);
+
+    // print out top horizontal line
+    for (int loop = 0; loop < width; loop++)
+    {
+        cout << char(HL);
+    }
+
+    // top right corner
+    cout << char(TRC);
+
+    // vertical lines
+    for (int loop = 1; loop < height; loop++)
+    {
+        gotoxy(xpos, ypos + loop);
+        cout << char(VL);
+        for (int loop = 0; loop < width; loop++)
+        {
+            setTextColour(9);
+            cout << char(BoC);
+            setTextColour(15);
+        }
+        gotoxy(xpos + width + 1, ypos + loop);
+        cout << char(VL);
+    }
+
+    // bottom left corner
+    gotoxy(xpos, ypos + height);
+    cout << char(BLC);
+
+    // print out bottom horizontal line
+    for (int loop = 0; loop < width; loop++)
+    {
+        cout << char(HL);
+    }
+
+    // bottom right corner
+    cout << char(BRC);
+
+    gotoxy(0, 13);
+    setTextColour(15);
+}	//	void drawBoC(int xpos, int ypos, int width, int height)
+
+void cls()
+{
+    HANDLE hStdout; // handle to console screen
+    COORD coordScreen = { 0, 0 }; // home for the cursor
+    DWORD cCharsWritten; //
+    CONSOLE_SCREEN_BUFFER_INFO csbi; //
+    DWORD dwConSize; // Used to store size of screen
+
+    hStdout = GetStdHandle(STD_OUTPUT_HANDLE); // Get handle to output screen.
+    // Get the number of character cells in the current buffer.
+    if (!GetConsoleScreenBufferInfo(hStdout, &csbi))
+    {
+        return;
+    }
+
+    dwConSize = csbi.dwSize.X * csbi.dwSize.Y;
+
+    // Fill the entire screen with blanks.
+    if (!FillConsoleOutputCharacter(hStdout, // Handle to console screen buffer
+        (TCHAR)' ', // Space Character to write to the buffer
+        dwConSize, // Number of cells to write
+        coordScreen, // Coordinates of first cell
+        &cCharsWritten)) // Receive number of characters written
+    {
+        return;
+    }
+
+    // Get the current text attribute.
+    if (!GetConsoleScreenBufferInfo(hStdout, &csbi))
+    {
+        return;
+    }
+
+    // Set the buffer's attributes accordingly.
+    if (!FillConsoleOutputAttribute(hStdout, // Handle to console screen buffer
+        csbi.wAttributes, // Character attributes to use
+        dwConSize, // Number of cells to set attribute
+        coordScreen, // Coordinates of first cell
+        &cCharsWritten)) // Receive number of characters written
+    {
+        return;
+    }
+
+    // Put the cursor at its home coordinates.
+    SetConsoleCursorPosition(hStdout, coordScreen);
+} //clears screen
